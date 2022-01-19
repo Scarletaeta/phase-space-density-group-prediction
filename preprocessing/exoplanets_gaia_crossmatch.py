@@ -19,54 +19,56 @@ def gaia_exoplanets_cross(gaia_filename, crossmatch_dir, save_gaia_id=False, ret
     # Path to downloaded datasets
     datasets_dir = "data/initial_datasets"
 
-    # Read Exoplanets data
-    exoplanets = pd.read_csv(path.join(datasets_dir, "exoplanets.csv"), skiprows=28,
-                             usecols=["pl_name", "hostname", "gaia_id", "pl_orbper", "pl_orbsmax", "pl_bmasse"])
+    # Read Exoplanets data: [SR] changed skiprows from 28 to 24 bc exoplanet datafile seems to have changed
+    exoplanets = pd.read_csv(path.join(datasets_dir, "exoplanets.csv"), skiprows=24,
+                             usecols=["pl_name", "hostname", "gaia_id", "pl_orbper", "pl_orbsmax", "pl_bmasse"]) 
+    #exoplanets = pd.read_csv(path.join(datasets_dir, "exoplanets.csv"), skiprows=28,
+                             #usecols=["pl_name", "hostname", "gaia_id", "pl_orbper", "pl_orbsmax", "pl_bmasse"])
     # Process Exoplanets data
     exoplanets.dropna(subset=["gaia_id"], inplace=True)
-    exoplanets["source_id"] = exoplanets["gaia_id"].str.rsplit(" ", n=1, expand=True)[1].astype("int64")
-    exoplanets.drop(["gaia_id"], axis=1, inplace=True)
-    exoplanets["Host"] = exoplanets["hostname"].str.replace(" ", "")
+    exoplanets["source_id"] = exoplanets["gaia_id"].str.rsplit(" ", n=1, expand=True)[1].astype("int64") #The source_id is the first part of the gaia_id (split up if it has spaces in it). Splits the source_id on the whitespace. Max one split can occur. Expands the split strings into separate columns (i.e. the source_id gets separated into two columns if it has a space in it.
+    exoplanets.drop(["gaia_id"], axis=1, inplace=True) #deletes all entries in the gaia_id column and replaces them with 'None'
+    exoplanets["Host"] = exoplanets["hostname"].str.replace(" ", "") #the exoplanets' Host is the hostname without spaces
     exoplanets.drop_duplicates(subset=["Host"], inplace=True)
 
     # Read Gaia data
     gaia = pd.read_csv(path.join(datasets_dir, gaia_filename))
 
     # Add Gaia information to Exoplanet hosts
-    exoplanets = pd.merge(exoplanets, gaia, on="source_id")
-    exoplanets.drop(["pl_name", "hostname"], axis=1, inplace=True)
+    exoplanets = pd.merge(exoplanets, gaia, on="source_id") #gaia information is added to the list of exoplanets. The gaia data is matched to the exoplanet list by the source_id
+    exoplanets.drop(["pl_name", "hostname"], axis=1, inplace=True) #deletes the planet name and hostname from the exoplanets df. The source_id remains
 
-    # Remove exoplanet hosts from Gaia
+    # Remove exoplanet hosts from Gaia. Why?
     gaia = gaia[~gaia["source_id"].isin(exoplanets["source_id"])]
     # Further reduction of the data
-    gaia = gaia[4.5 < gaia["parallax"] / gaia["parallax_error"]]
+    gaia = gaia[4.5 < gaia["parallax"] / gaia["parallax_error"]] #removes stars with with parallax/parallax error > 4.5
 
     # Concatenate exoplanet hosts back, however at the top of the dataframe. This way for testing purposes we later
     # iterate only over first 1065 entries that are exoplanet hosts.
-    gaia = pd.concat([exoplanets, gaia])
+    gaia = pd.concat([exoplanets, gaia]) #adding the exoplanet list back into the gaia df, at the top
 
     # Calculate distance in pc and drop any stars with negative or null distance
-    gaia["distance_pc"] = (1. / gaia["parallax"]) * 1000
-    gaia = gaia[gaia["distance_pc"] > 0]
+    gaia["distance_pc"] = (1. / gaia["parallax"]) * 1000 #closely aligned sources are only occasionally resolved in Gaia, confusion in observation-to-source matching can lead to spurious parallax values which are either very large or have a negative value very far away from zero
+    gaia = gaia[gaia["distance_pc"] > 0] #adding a new column to the gaia df for distance_pc, when it is > 0. What happens if it is < 0? Nothing gets added? Are these stars then removed?
 
     # Convert from degrees to pc
     gaia["ra"] = (gaia["ra"] * np.pi) / 180.
     gaia["dec"] = (gaia["dec"] * np.pi) / 180.
 
-    if save_gaia_id:
-        gaia[["source_id", "Host"]].to_csv(path.join(crossmatch_dir, f"{gaia_filename.split('.')[0]}_star_labels.csv"), index=False)
+    if save_gaia_id: #if we have entered save_gaia_id=True into the function
+        gaia[["source_id", "Host"]].to_csv(path.join(crossmatch_dir, f"{gaia_filename.split('.')[0]}_star_labels.csv"), index=False) #create a csv containing the source_id and Host
 
     # Drop all unnecessary data leaving only 6 coordinates, their errors and distance
-    gaia.drop(gaia.columns[:5], axis=1, inplace=True)
+    gaia.drop(gaia.columns[:5], axis=1, inplace=True) #keep columns 0-5
 
     # Save transformed data to a new file
-    if save_spherical:
+    if save_spherical: #if we have entered save_sperical=True into the function
         gaia.to_csv(path.join(crossmatch_dir, f"{gaia_filename.split('.')[0]}_exoplanet_cross_spherical.csv"),
-                    index=False)
-        exoplanets.to_csv(path.join(crossmatch_dir, f"{gaia_filename.split('.')[0]}_exoplanet_hosts.csv"), index=False)
+                    index=False) #save the gaia data to a csv as it is (in spherical coords). join.(...) is used to make the name of the csv
+        exoplanets.to_csv(path.join(crossmatch_dir, f"{gaia_filename.split('.')[0]}_exoplanet_hosts.csv"), index=False) #save the exoplanets data to a csv as it is (spherical)
 
-    if return_data:
-        return gaia
+    if return_data: #return_data: Return crossmatched gaia data for further use
+        return gaia #return the gaia df
 
 
 def transform_to_cart(gaia, table_name, crossmatch_dir, setting="6d", predicted_radial_velocity=None):
@@ -144,11 +146,11 @@ def cart2sph(x, y, z):
 def vcart2vsph(vx, vy, vz, x, y, z):
     r = np.sqrt(x * x + y * y * z * z)
     R = np.sqrt(x * x + y * y)
-    rdot = x * vx + y * vy + z * vz
-    rdot /= r
-    radot = vx * y - vy * x
+    rdot = x * vx + y * vy + z * vz #radial velocity
+    rdot /= r 
+    radot = vx * y - vy * x #velocity in ra
     radot /= R * R
-    decdot = z * (x * vx + y * vy) - R * R * vz
+    decdot = z * (x * vx + y * vy) - R * R * vz #velocity in dec
     decdot /= (R * r * r)
 
     return rdot, radot, decdot
@@ -156,8 +158,8 @@ def vcart2vsph(vx, vy, vz, x, y, z):
 
 # Function to convert velocities from spherical to cartesian coordinates
 def vsph2cart(rdot, radot, decdot, r, ra, dec):
-    xdot = np.cos(ra) * np.cos(dec) * rdot - r * np.sin(ra) * np.cos(dec) * radot - r * np.cos(ra) * np.sin(dec) * decdot
-    ydot = np.sin(ra) * np.cos(dec) * rdot + r * np.cos(ra) * np.cos(dec) * radot - r * np.sin(ra) * np.sin(dec) * decdot
-    zdot = np.sin(dec) * rdot + r * np.cos(dec) * decdot
+    xdot = np.cos(ra) * np.cos(dec) * rdot - r * np.sin(ra) * np.cos(dec) * radot - r * np.cos(ra) * np.sin(dec) * decdot #x velocity
+    ydot = np.sin(ra) * np.cos(dec) * rdot + r * np.cos(ra) * np.cos(dec) * radot - r * np.sin(ra) * np.sin(dec) * decdot #y velocity
+    zdot = np.sin(dec) * rdot + r * np.cos(dec) * decdot #z velocity
 
     return xdot, ydot, zdot
