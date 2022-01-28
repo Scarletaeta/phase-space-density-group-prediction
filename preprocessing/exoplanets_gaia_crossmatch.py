@@ -21,7 +21,7 @@ def gaia_exoplanets_cross(gaia_filename, crossmatch_dir, save_gaia_id=False, ret
 
     # Read Exoplanets data: [SR] changed skiprows from 28 to 24 bc exoplanet datafile seems to have changed
     exoplanets = pd.read_csv(path.join(datasets_dir, "exoplanets.csv"), skiprows=24,
-                             usecols=["pl_name", "hostname", "gaia_id", "pl_orbper", "pl_orbsmax", "pl_bmasse"]) 
+                             usecols=["pl_name", "hostname", "gaia_id", "pl_orbper", "pl_orbsmax", "pl_bmasse"]) #path.joinpath, *paths) joins directories togeter so that you can create a new directory that is a floder withing a folder etc.
     #exoplanets = pd.read_csv(path.join(datasets_dir, "exoplanets.csv"), skiprows=28,
                              #usecols=["pl_name", "hostname", "gaia_id", "pl_orbper", "pl_orbsmax", "pl_bmasse"])
     # Process Exoplanets data
@@ -49,7 +49,7 @@ def gaia_exoplanets_cross(gaia_filename, crossmatch_dir, save_gaia_id=False, ret
 
     # Calculate distance in pc and drop any stars with negative or null distance
     gaia["distance_pc"] = (1. / gaia["parallax"]) * 1000 #closely aligned sources are only occasionally resolved in Gaia, confusion in observation-to-source matching can lead to spurious parallax values which are either very large or have a negative value very far away from zero
-    gaia = gaia[gaia["distance_pc"] > 0] #adding a new column to the gaia df for distance_pc, when it is > 0. What happens if it is < 0? Nothing gets added? Are these stars then removed?
+    gaia = gaia[gaia["distance_pc"] > 0] #returns all of gaia for which distance_pc > 0 and overwrites the gaia df with it. Gets rid of all entries where distance_pc <= 0. For these entries, the solution returned by gaia is unphysical so we want to ditch it
 
     # Convert from degrees to pc
     gaia["ra"] = (gaia["ra"] * np.pi) / 180.

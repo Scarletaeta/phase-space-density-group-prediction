@@ -4,11 +4,11 @@ import numpy as np
 
 # Global variables for cuda functions input
 N_PARAMS = 6
-N_DIST_CLOSE = 40
-N_DIST_FAR = 80
+N_DIST_CLOSE = 40 #the region within the first group lies, 40pc
+N_DIST_FAR = 80 #the region within which the second group lies, 80pc
 
 
-@njit(parallel=False)
+@njit(parallel=False) #@ symbol at the beginning of a line is used for class, function and method decorators.
 def to_sets_cpu(target, gaia):
     """
     Create two sets of neigbours of the target star within given range (by default 40pc and 80pc).
@@ -19,22 +19,23 @@ def to_sets_cpu(target, gaia):
     :return: Return 2 sets of neighbours according to the supplied dist1 and dist2 params
     """
 
-    set1 = []
+    set1 = [] #empty arrays to put the sets in
     set2 = []
-    for i in range(gaia.shape[0]):
+    for i in range(gaia.shape[0]): #for i 0 - no. columns in gaia
+        z = np.zeros(shape=target[:3].shape) #creates an array of zeros with the shape of the target input if we use all columns before column 3. TODO: this is the first 4 columns, do we want 4D?
+        
         # Calculate distance from target star to its neighbour
-        z = np.zeros(shape=target[:3].shape)
-        for j in range(target[:3].shape[0]):
-            z[j] = target[j] - gaia[i][j]
+        for j in range(target[:3].shape[0]): #for j 0 - no. rows in target. TODO: why does he use target[:3]? Aren't columns 0-3 the same length as the whole of target?
+            z[j] = target[j] - gaia[i][j] #TODO: why isn't it z[i][j] = target[i][j] - gaia [i][j]?
 
-        dist = np.sqrt(np.sum(z ** 2, 0))
+        dist = np.sqrt(np.sum(z ** 2, 0)) #TODO: this adds z^2 and 0, why? The distance is |z| = sqrt(z.z)
 
         # Check if value fits into a predefined range and if so add value to an appropriate array.
-        if dist < N_DIST_CLOSE:
-            set1.append(gaia[i][:])
+        if dist < N_DIST_CLOSE: #40pc
+            set1.append(gaia[i][:]) #add that row of gaia data to set 1
 
-        if dist < N_DIST_FAR:
-            set2.append(gaia[i][:])
+        if dist < N_DIST_FAR: #80pc
+            set2.append(gaia[i][:]) #add that row of gaia data to set 2
 
     return set1, set2
 
@@ -46,8 +47,8 @@ def to_sets_gpu(target, gaia, set1, set2):
 
     :param target: Phase space coordinates of the target star
     :param gaia: List of phase space coordinates for all stars in Gaia dataset
-    :param set1: Numpy array to store list of neighbours within dist1.
-    :param set2: Numpy array to store list of neighbours within dist2.
+    :param set1: Numpy array to store list of neighbours within dist1. 40pc default
+    :param set2: Numpy array to store list of neighbours within dist2. 80pc default
     """
 
     start = cuda.grid(1)
@@ -70,10 +71,10 @@ def to_sets_gpu(target, gaia, set1, set2):
                 set2[i][k] = gaia[i][k]
 
 
-@njit(parallel=True)
+@njit(parallel=True) #running in parallel
 def calc_mah_cpu(set1_star, set2, set2_inv):
     """
-    Calculate mahalanobis distance to all neighbours of the target star and select 20th closest.
+    Calculate mahalanobis distance to all neighbours of the target star and select 20th closest. TODO: why the 20th closest?
 
     :param set1_star: Set1 star coordinates.
     :param set2: Entire second set of neighbours.
@@ -83,14 +84,15 @@ def calc_mah_cpu(set1_star, set2, set2_inv):
     """
 
     # Create an array with infinite numbers. for 20 closest stars.
+    #TODO: why the 20 closest stars?
     # The idea here is that as the new values are being calculated the largest values will be replaced in the list.
     mahal_dist = np.full(20, np.inf, dtype="float64")
 
-    for j in prange(set2.shape[0]):
+    for j in prange(set2.shape[0]): #parallel loop
         # Below is a manual implementation of mahalanobis distance as numba does not support scipy function.
 
         delta = set1_star - set2[j]
-        m = np.dot(np.dot(delta, set2_inv), delta)
+        m = np.dot(np.dot(delta, set2_inv), delta) #mahalanobis distance (d_m in p.29 of diss.) TODO: check this with Steve
 
         # New value is compared to currently stored values and it replaces the highest value if new value < highest value in the set.
         if m < mahal_dist.max():
