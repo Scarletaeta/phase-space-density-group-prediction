@@ -18,15 +18,18 @@ def to_sets_cpu(target, gaia):
 
     :return: Return 2 sets of neighbours according to the supplied dist1 and dist2 params
     """
-
+#checks the physical distance from the host star to its neighbours
+    
     set1 = [] #empty arrays to put the sets in
     set2 = []
     for i in range(gaia.shape[0]): #for i 0 - no. columns in gaia
-        z = np.zeros(shape=target[:3].shape) #creates an array of zeros with the shape of the target input if we use all columns before column 3. TODO: this is the first 4 columns, do we want 4D?
+        z = np.zeros(shape=target[:3].shape) #creates an array of zeros with the shape of the target input if we use all columns before column 3. This is the 4D information used to calc the d from the host star to its neighbours
         
         # Calculate distance from target star to its neighbour
-        for j in range(target[:3].shape[0]): #for j 0 - no. rows in target. TODO: why does he use target[:3]? Aren't columns 0-3 the same length as the whole of target?
+        for j in range(target[:3].shape[0]): #for j 0 - no. rows in target.
             z[j] = target[j] - gaia[i][j] #TODO: why isn't it z[i][j] = target[i][j] - gaia [i][j]?
+            #target[j] = target (x,y,z)
+            #gaia[i][j] = ith star, jth coordinate
 
         dist = np.sqrt(np.sum(z ** 2, 0)) #TODO: this adds z^2 and 0, why? The distance is |z| = sqrt(z.z)
 
@@ -170,7 +173,7 @@ def calc_mah_gpu(set1, set2, set2_inv, dists):
 
 
 @njit
-def calc_dense(mah_dist_arr, dims=6, nth_star=20):
+def calc_dense(mah_dist_arr, dims=6, nth_star=20): #TODO: why is nth_star 20? Nth closest neighbour distance
     """
     Calculate phase space density for each neighbour.
 
@@ -181,8 +184,8 @@ def calc_dense(mah_dist_arr, dims=6, nth_star=20):
     :return: List of phase space densities of all neighbours.
     """
 
-    density = nth_star / mah_dist_arr ** dims
-    norm_density = density / np.median(density)
+    density = nth_star / mah_dist_arr ** dims #eqn. 11
+    norm_density = density / np.median(density) #eqn. 12
     return norm_density
 
 
@@ -193,7 +196,7 @@ def get_densities(labels, gaia, start=0, stop=1000, step=1, run_on_gpu=False):
     :param labels: List of star labels (source_id) from Gaia dataset.
     :param gaia: List of cartesian coordinates for all gaia stars.
     :param start: Start from given integer.
-    :param stop: Stop at given integer.
+    :param stop: Stop at given integer. TODO: why do we stop at 1000? what does this mean
     :param step: Increment value.
     :param run_on_gpu: Set True to run pipeline on GPU.
 
@@ -203,8 +206,8 @@ def get_densities(labels, gaia, start=0, stop=1000, step=1, run_on_gpu=False):
 
     global N_PARAMS
 
-    dropped = []
-    densities = []
+    dropped = [] #stars with < 400 neighbours withing the given d.
+    densities = [] #target star densities and densities of their neighbours. TODO: aren't these the same thing?
     for i in range(start, stop, step):
         # Generate sets of star neighbours
         if run_on_gpu:
@@ -216,13 +219,13 @@ def get_densities(labels, gaia, start=0, stop=1000, step=1, run_on_gpu=False):
             set2 = set2[~np.all(set2 == 0, axis=1)]
         else:
             target = gaia[i]
-            set1, set2 = to_sets_cpu(target, gaia)
-            set1 = np.array(set1)
+            set1, set2 = to_sets_cpu(target, gaia) #generates two sets of stars, neighbours within 40 pc and neighbours within 80pc
+            set1 = np.array(set1) #convert to an array
             set2 = np.array(set2)
 
         # Drop stars with less than 400 neighbours
-        if set1.shape[0] < 400:
-            dropped.append([labels[i], set1.shape[0], set2.shape[0]])
+        if set1.shape[0] < 400: #if less than 400 rows i.e. fewer than 400 neighbours in the list
+            dropped.append([labels[i], set1.shape[0], set2.shape[0]]) #add them into the dropped list
             continue
 
         # Get id of the target star and remove it from set2
