@@ -29,7 +29,7 @@ def gaia_exoplanets_cross(gaia_filename, crossmatch_dir, save_gaia_id=False, ret
     exoplanets["source_id"] = exoplanets["gaia_id"].str.rsplit(" ", n=1, expand=True)[1].astype("int64") #The source_id is the first part of the gaia_id (split up if it has spaces in it). Splits the source_id on the whitespace. Max one split can occur. Expands the split strings into separate columns (i.e. the source_id gets separated into two columns if it has a space in it.
     exoplanets.drop(["gaia_id"], axis=1, inplace=True) #deletes all entries in the gaia_id column and replaces them with 'None'
     exoplanets["Host"] = exoplanets["hostname"].str.replace(" ", "") #the exoplanets' Host is the hostname without spaces
-    exoplanets.drop_duplicates(subset=["Host"], inplace=True)
+    exoplanets.drop_duplicates(subset=["Host"], inplace=True) #gets rid of exoplanets with same host star so that phase space density is only calculated once
 
     # Read Gaia data
     gaia = pd.read_csv(path.join(datasets_dir, gaia_filename))
@@ -48,7 +48,7 @@ def gaia_exoplanets_cross(gaia_filename, crossmatch_dir, save_gaia_id=False, ret
     gaia = pd.concat([exoplanets, gaia]) #adding the exoplanet list back into the gaia df, at the top
 
     # Calculate distance in pc and drop any stars with negative or null distance
-    gaia["distance_pc"] = (1. / gaia["parallax"]) * 1000 #closely aligned sources are only occasionally resolved in Gaia, confusion in observation-to-source matching can lead to spurious parallax values which are either very large or have a negative value very far away from zero
+    gaia["distance_pc"] = (1. / gaia["Fparallax"]) * 1000 #closely aligned sources are only occasionally resolved in Gaia, confusion in observation-to-source matching can lead to spurious parallax values which are either very large or have a negative value very far away from zero
     gaia = gaia[gaia["distance_pc"] > 0] #returns all of gaia for which distance_pc > 0 and overwrites the gaia df with it. Gets rid of all entries where distance_pc <= 0. For these entries, the solution returned by gaia is unphysical so we want to ditch it
 
     # Convert from degrees to pc
