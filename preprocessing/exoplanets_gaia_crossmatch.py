@@ -42,10 +42,11 @@ def gaia_exoplanets_cross(gaia_filename, crossmatch_dir, save_gaia_id=False, ret
     gaia = gaia[~gaia["source_id"].isin(exoplanets["source_id"])]
     # Further reduction of the data
     gaia = gaia[4.5 < gaia["parallax"] / gaia["parallax_error"]] #removes stars with with parallax/parallax error > 4.5
+    # like a signal to noise cut
 
     # Concatenate exoplanet hosts back, however at the top of the dataframe. This way for testing purposes we later
     # iterate only over first 1065 entries that are exoplanet hosts.
-    gaia = pd.concat([exoplanets, gaia]) #adding the exoplanet list back into the gaia df, at the top
+    gaia = pd.concat([exoplanets, gaia]) # adding the exoplanet list back into the gaia df, at the top
 
     # Calculate distance in pc and drop any stars with negative or null distance
     gaia["distance_pc"] = (1. / gaia["parallax"]) * 1000 #closely aligned sources are only occasionally resolved in Gaia, confusion in observation-to-source matching can lead to spurious parallax values which are either very large or have a negative value very far away from zero
@@ -80,6 +81,7 @@ def transform_to_cart(gaia, table_name, crossmatch_dir, setting="6d", predicted_
     :param predicted_radial_velocity: Optional - True when using predicted radial velocity coordinate
     :return: Return Gaia dataset with converted coordinates
     """
+    # The transformation you do depends on what information you have available. Whether radial velocity is or isn't available
 
     # First 3 coordinates remain the same for all options
     gaia["x"], gaia["y"], gaia["z"] = sph2cart(gaia["distance_pc"], gaia["ra"], gaia["dec"])

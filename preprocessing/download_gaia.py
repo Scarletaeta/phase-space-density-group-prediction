@@ -2,14 +2,17 @@ from astroquery.gaia import Gaia
 
 
 class GaiaDataset:
+    # a class is a set of functions and variables that you will use many times
     """
     Use this class to fetch GAIA dataset from ESA.
     """
 
     def __init__(self, query=None, table="gaiaedr3.gaia_source", filename="gaiaedr3"):
-        self.query = query
-        self.filename = filename
-        self.table = table
+        # the init function, initialisation step. 
+        # Cretes the self, query and table variables (defaults to thsoe inside the brackets)
+        self.query = query # creating a variable called query
+        self.filename = filename # creting a variable called filename
+        self.table = table # etc
 
     def __login(self):
         """
@@ -37,9 +40,10 @@ class GaiaDataset:
         :param query: SQL query supplied by user
         """
 
-        self.__login()
+        self.__login() # runs the self._login() function above
         if query is None:
             self.__default_query()
+            # use the default
 
         if self.filename[-4:] != ".csv":
             self.filename = self.filename + ".csv"

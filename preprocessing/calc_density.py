@@ -1,9 +1,10 @@
 import math
-from numba import njit, prange, cuda, float64
+from numba import njit, prange, cuda, float64 # using GPUs. Python interface to work with GPUs, transforms code to machine code operable on GPUs
+# prange is like 'range' but for numba/GPU
 import numpy as np
 
 # Global variables for cuda functions input
-N_PARAMS = 6
+N_PARAMS = 6 # no. parameters, 6D vs 5D
 N_DIST_CLOSE = 40 #the region within the first group lies, 40pc
 N_DIST_FAR = 80 #the region within which the second group lies, 80pc
 
@@ -20,18 +21,21 @@ def to_sets_cpu(target, gaia):
     """
 #checks the physical distance from the host star to its neighbours
     
-    set1 = [] #empty arrays to put the sets in
-    set2 = []
-    for i in range(gaia.shape[0]): #for i 0 - no. columns in gaia
-        z = np.zeros(shape=target[:3].shape) #creates an array of zeros with the shape of the target input if we use all columns before column 3. This is the 4D information used to calc the d from the host star to its neighbours
+    set1 = [] #empty arrays to put the sets in. For all the stars within 40pc
+    set2 = [] #  for all teh stars within 80pc
+    for i in range(gaia.shape[0]): #for i 0 - no. rows in gaia
+        z = np.zeros(shape=target[:3].shape) # z is a single row with three columns
         
         # Calculate distance from target star to its neighbour
-        for j in range(target[:3].shape[0]): #for j 0 - no. rows in target.
-            z[j] = target[j] - gaia[i][j] #TODO: why isn't it z[i][j] = target[i][j] - gaia [i][j]?
-            #target[j] = target (x,y,z)
+        for j in range(target[:3].shape[0]): #for j 0,1,2 (range(3))
+            z[j] = target[j] - gaia[i][j]
+            # z[j] = the jth coordinate in z
+            #target[j] = jth coordinate in target
             #gaia[i][j] = ith star, jth coordinate
 
-        dist = np.sqrt(np.sum(z ** 2, 0)) #TODO: this adds z^2 and 0, why? The distance is |z| = sqrt(z.z)
+        dist = np.sqrt(np.sum(z ** 2, 0)) # sum(array, index) sums the rows in z**2
+        # the sum function finds the sum of an array
+        # gives us the distance to the ith gaia star
 
         # Check if value fits into a predefined range and if so add value to an appropriate array.
         if dist < N_DIST_CLOSE: #40pc
