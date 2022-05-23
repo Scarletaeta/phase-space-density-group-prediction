@@ -1,3 +1,15 @@
 .ipynb_checkpoints/gaia_processing-checkpoint.ipynb
 models/.ipynb_checkpoints/
 preprocessing/.ipynb_checkpoints/
+.ipynb_checkpoints/
+data/initial_datasets/.ipynb_checkpoints/
+graphs/.ipynb_checkpoints/
+graphs/__pycache__/
+graphs/__pycache__/
+models/__pycache__/
+preprocessing/__pycache__/
+.ipynb_checkpoints/
+.ipynb_checkpoints/gaia_graphs-checkpoint.ipynb .ipynb_checkpoints/gaia_models-checkpoint.ipynb .ipynb_checkpoints/gaia_postanalysis-checkpoint.ipynb .ipynb_checkpoints/gaia_processing_batches-checkpoint.ipynb
+data/initial_datasets/gaiaedr3.csv
+data/crossmatch/
+data/densities/
